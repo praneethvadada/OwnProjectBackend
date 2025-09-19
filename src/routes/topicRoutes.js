@@ -20,6 +20,11 @@ const safeGetChildren = ensureFn(TopicCtrl.getChildren, "getChildren");
 const safeGetBySlug = ensureFn(TopicCtrl.getTopicBySlugPath, "getTopicBySlugPath");
 const safeGetTree = ensureFn(TopicCtrl.getTopicTree, "getTopicTree");
 
+
+
+// dedicated root topics endpoint
+router.get("/root", TopicCtrl.getRootTopics);
+
 // Create
 router.post("/add", authenticate, requireAdmin, safeCreate);
 

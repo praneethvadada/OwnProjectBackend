@@ -193,6 +193,50 @@ export const deleteTopicById = async (id) => {
 
 
 
+/**
+ * Get root-level topics (parent_id IS NULL) with pagination.
+ * options: { limit = 50, offset = 0, includeChildCount = false }
+ */
+export const getRootTopics = async (options = {}) => {
+  const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 50;
+  const offset = Number.isFinite(Number(options.offset)) ? Number(options.offset) : 0;
+  const includeChildCount = !!options.includeChildCount;
+
+  if (includeChildCount) {
+    const [rows] = await db.query(
+      `SELECT t.id, t.title, t.slug, t.description, t.metadata, t.order_index, t.is_published, t.created_at,
+              COALESCE(c.child_count, 0) AS child_count
+       FROM topics t
+       LEFT JOIN (
+         SELECT parent_id, COUNT(*) AS child_count
+         FROM topics
+         GROUP BY parent_id
+       ) c ON t.id = c.parent_id
+       WHERE t.parent_id IS NULL
+       ORDER BY t.order_index ASC, t.title ASC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    // parse metadata (if JSON)
+    return rows.map(r => ({ ...r, metadata: r.metadata ? JSON.parse(r.metadata) : null }));
+  } else {
+    const [rows] = await db.query(
+      `SELECT id, title, slug, description, metadata, order_index, is_published, created_at
+       FROM topics
+       WHERE parent_id IS NULL
+       ORDER BY order_index ASC, title ASC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    return rows.map(r => ({ ...r, metadata: r.metadata ? JSON.parse(r.metadata) : null }));
+  }
+};
+
+
+
+
 // // src/models/topicModel.js
 // import db from "../config/db.js";
 

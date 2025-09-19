@@ -1,7 +1,7 @@
 // src/controllers/topicController.js
 import * as Topic from "../models/topicModel.js";
 import * as ContentBlock from "../models/contentBlockModel.js";
-
+import * as TopicModel from "../models/topicModel.js";
 /* Create */
 export const createTopic = async (req, res) => {
   try {
@@ -46,19 +46,40 @@ export const deleteTopic = async (req, res) => {
 };
 
 /* Get by id: return topic + blocks + immediate children */
+// export const getTopicById = async (req, res) => {
+//   try {
+//     const id = Number(req.params.id);
+//     // if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid topic id" });
+//     const topic = await Topic.getTopicById(id);
+//     if (!topic) return res.status(404).json({ message: "Topic not found" });
+//     const blocks = await ContentBlock.getBlocksByTopic(topic.id);
+//     const children = await Topic.getChildren(topic.id);
+//     return res.json({ topic, blocks, children });
+//   } catch (err) {
+//     console.error("getTopicById error:", err);
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
 export const getTopicById = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const topic = await Topic.getTopicById(id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ message: "Invalid topic id" });
+    }
+
+    const topic = await TopicModel.getTopicById(id);
     if (!topic) return res.status(404).json({ message: "Topic not found" });
-    const blocks = await ContentBlock.getBlocksByTopic(topic.id);
-    const children = await Topic.getChildren(topic.id);
-    return res.json({ topic, blocks, children });
+
+    // fetch child topics, blocks, etc...
+    return res.json({ topic });
   } catch (err) {
     console.error("getTopicById error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 /* Get immediate children */
 export const getChildren = async (req, res) => {
@@ -147,6 +168,21 @@ export const getTopicTree = async (req, res) => {
     return res.json(tree);
   } catch (err) {
     console.error("getTopicTree error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+export const getRootTopics = async (req, res) => {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : 50;
+    const offset = req.query.offset ? Number(req.query.offset) : 0;
+    const includeChildCount = req.query.includeChildCount === "1" || req.query.includeChildCount === "true";
+
+    const rows = await TopicModel.getRootTopics({ limit, offset, includeChildCount });
+    return res.json({ count: rows.length, topics: rows });
+  } catch (err) {
+    console.error("getRootTopics error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
