@@ -3,6 +3,7 @@ import express from "express";
 import * as TopicCtrl from "../controllers/topicController.js";
 import { authenticate } from "../middleware/authMiddleware.js";
 import { requireAdmin } from "../middleware/roleMiddleware.js";
+import * as TopicContentCtrl from "../controllers/topicContentController.js";
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ const safeGetBySlug = ensureFn(TopicCtrl.getTopicBySlugPath, "getTopicBySlugPath
 const safeGetTree = ensureFn(TopicCtrl.getTopicTree, "getTopicTree");
 
 // Create
-router.post("/", authenticate, requireAdmin, safeCreate);
+router.post("/add", authenticate, requireAdmin, safeCreate);
 
 // Update / Delete
 router.put("/:id", authenticate, requireAdmin, safeEdit);
@@ -37,6 +38,13 @@ router.get("/tree/:id", safeGetTree);
 
 // slug resolver (API): use regex to capture everything after /slug/
 router.get(/^\/slug\/(.*)$/, safeGetBySlug);
+
+// Add content by topic id (protected)
+router.post("/:id/content", authenticate, requireAdmin, TopicContentCtrl.addContentByTopicId);
+
+// Add content by slug wildcard (protected) — use regex to capture arbitrary path after /slug/
+router.post(/^\/slug\/(.*)\/content$/, authenticate, requireAdmin, TopicContentCtrl.addContentBySlug);
+
 
 export default router;
 
