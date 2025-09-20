@@ -13,7 +13,7 @@ import mcqRoutes from "./routes/mcqRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import contentBlockRoutes from "./routes/contentBlockRoutes.js";
 import * as TopicCtrl from "./controllers/topicController.js";
-
+  
 dotenv.config();
 
 const app = express();
