@@ -30,7 +30,7 @@ export const editTopic = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
-
+  
 /* Delete */
 export const deleteTopic = async (req, res) => {
   try {
