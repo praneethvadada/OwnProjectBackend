@@ -19,7 +19,7 @@ dotenv.config();
 const app = express();
 
 // --- Body parsers (only once, with limits) ---
-const JSON_LIMIT = process.env.JSON_LIMIT || "20mb"; // use env var if you want to change easily
+const JSON_LIMIT = process.env.JSON_LIMIT || "50mb"; // use env var if you want to change easily
 app.use(express.json({ limit: JSON_LIMIT }));
 app.use(express.urlencoded({ limit: JSON_LIMIT, extended: true }));
 

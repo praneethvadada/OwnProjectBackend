@@ -3,11 +3,46 @@ import * as Topic from "../models/topicModel.js";
 import * as ContentBlock from "../models/contentBlockModel.js";
 import * as TopicModel from "../models/topicModel.js";
 /* Create */
+// export const createTopic = async (req, res) => {
+//   try {
+//     const { parent_id = null, title, slug, description = null, order_index = 0, is_published = 0 } = req.body;
+//     if (!title || !slug) return res.status(400).json({ message: "title and slug required" });
+//     const id = await Topic.createTopic({ parent_id, title, slug, description, order_index, is_published, author_id: req.user?.id || null });
+//     return res.status(201).json({ id });
+//   } catch (err) {
+//     console.error("createTopic error:", err);
+//     if (err && err.code === "ER_DUP_ENTRY") return res.status(409).json({ message: "Slug conflict under same parent" });
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
+/* Create */
 export const createTopic = async (req, res) => {
   try {
-    const { parent_id = null, title, slug, description = null, order_index = 0, is_published = 0 } = req.body;
+    const {
+      parent_id = null,
+      title,
+      slug,
+      description = null,
+      // allow client to specify order_no (optional). If omitted, we insert at top.
+      order_no = null,
+      is_published = 0
+    } = req.body;
+
     if (!title || !slug) return res.status(400).json({ message: "title and slug required" });
-    const id = await Topic.createTopic({ parent_id, title, slug, description, order_index, is_published, author_id: req.user?.id || null });
+
+    const id = await TopicModel.createTopicWithOrder({
+      parent_id,
+      title,
+      slug,
+      description,
+      order_no,
+      author_id: req.user?.id || null,
+      metadata: req.body.metadata || null,
+      is_published: is_published ? 1 : 0
+    });
+
     return res.status(201).json({ id });
   } catch (err) {
     console.error("createTopic error:", err);
@@ -45,21 +80,7 @@ export const deleteTopic = async (req, res) => {
   }
 };
 
-/* Get by id: return topic + blocks + immediate children */
-// export const getTopicById = async (req, res) => {
-//   try {
-//     const id = Number(req.params.id);
-//     // if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid topic id" });
-//     const topic = await Topic.getTopicById(id);
-//     if (!topic) return res.status(404).json({ message: "Topic not found" });
-//     const blocks = await ContentBlock.getBlocksByTopic(topic.id);
-//     const children = await Topic.getChildren(topic.id);
-//     return res.json({ topic, blocks, children });
-//   } catch (err) {
-//     console.error("getTopicById error:", err);
-//     return res.status(500).json({ message: "Server error" });
-//   }
-// };
+
 
 
 export const getTopicById = async (req, res) => {
@@ -79,6 +100,7 @@ export const getTopicById = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 /* Get immediate children */
@@ -188,455 +210,104 @@ export const getRootTopics = async (req, res) => {
 };
 
 
-
-// // src/controllers/topicController.js
-// import * as Topic from "../models/topicModel.js";
-// import * as ContentBlock from "../models/contentBlockModel.js";
-
 // /**
-//  * Create a new topic (subject / subtopic)
+//  * Reorder a topic.
+//  * PUT /api/topics/:id/order
+//  * Body: { order_no: <new position (0-based)> }
 //  */
-// export const createTopic = async (req, res) => {
-//   try {
-//     const { parent_id = null, title, slug, description = null, order_index = 0, is_published = 0 } = req.body;
-
-//     if (!title || !slug) {
-//       return res.status(400).json({ message: "title and slug are required" });
-//     }
-
-//     const normalizedSlug = String(slug).trim().toLowerCase();
-
-//     const payload = {
-//       parent_id,
-//       title,
-//       slug: normalizedSlug,
-//       description,
-//       author_id: req.user?.id || null,
-//       order_index,
-//       is_published,
-//     };
-
-//     const id = await Topic.createTopic(payload);
-//     return res.status(201).json({ id, title, slug: normalizedSlug });
-//   } catch (err) {
-//     console.error("createTopic error:", err);
-//     if (err && err.code === "ER_DUP_ENTRY") {
-//       return res.status(409).json({ message: "Slug already exists under this parent. Choose a different slug." });
-//     }
-//     return res.status(500).json({ message: "Server error while creating topic" });
-//   }
-// };
-
-// /**
-//  * Get children topics for given parent id.
-//  */
-// export const getChildren = async (req, res) => {
-//   try {
-//     const raw = req.params.id;
-//     const parentId = raw === "null" ? null : Number(raw);
-//     const children = await Topic.getChildren(parentId);
-//     return res.json(children);
-//   } catch (err) {
-//     console.error("getChildren error:", err);
-//     return res.status(500).json({ message: "Server error while fetching children" });
-//   }
-// };
-
-// /**
-//  * Resolve a topic from a slug path (wildcard)
-//  */
-// // export const getTopicBySlugPath = async (req, res) => {
-// //   try {
-// //     // Express wildcard (*) puts the match into req.params[0]
-// //     const slugPath = req.params[0] || "";
-// //     const segments = slugPath.split("/").filter(Boolean);
-
-// //     if (segments.length === 0) {
-// //       return res.status(400).json({ message: "No slug provided in path" });
-// //     }
-
-// //     const topic = await Topic.getTopicBySlugPath(segments);
-// //     if (!topic) return res.status(404).json({ message: "Topic not found" });
-
-// //     const blocks = await ContentBlock.getBlocksByTopic(topic.id);
-// //     return res.json({ topic, blocks });
-// //   } catch (err) {
-// //     console.error("getTopicBySlugPath error:", err);
-// //     return res.status(500).json({ message: "Server error while resolving slug path" });
-// //   }
-// // };
-
-
-
-// export const getTopicBySlugPath = async (req, res) => {
-//   try {
-//     const slugPath = req.params.slugPath || "";   // comes from :slugPath(*)
-//     const segments = slugPath.split("/").filter(Boolean);
-
-//     if (segments.length === 0) {
-//       return res.status(400).json({ message: "No slug provided in path" });
-//     }
-
-//     const topic = await Topic.getTopicBySlugPath(segments);
-//     if (!topic) return res.status(404).json({ message: "Topic not found" });
-
-//     const blocks = await ContentBlock.getBlocksByTopic(topic.id);
-//     return res.json({ topic, blocks });
-//   } catch (err) {
-//     console.error("getTopicBySlugPath error:", err);
-//     return res.status(500).json({ message: "Server error while resolving slug path" });
-//   }
-// };
-
-
-
-// export const editTopic = async (req, res) => {
+// export const reorderTopic = async (req, res) => {
 //   try {
 //     const id = Number(req.params.id);
-//     if (!id) return res.status(400).json({ message: "Invalid topic id" });
+//     if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ message: "Invalid id" });
 
-//     const allowed = ["title","slug","description","parent_id","order_index","is_published"];
-//     const fields = {};
-//     for (const k of allowed) {
-//       if (Object.prototype.hasOwnProperty.call(req.body, k)) fields[k] = req.body[k];
-//     }
-//     if (Object.keys(fields).length === 0) return res.status(400).json({ message: "No updatable fields provided" });
+//     if (!("order_no" in req.body)) return res.status(400).json({ message: "order_no required in body" });
+//     const newOrder = Number(req.body.order_no);
+//     if (!Number.isFinite(newOrder) || newOrder < 0) return res.status(400).json({ message: "Invalid order_no" });
 
-//     if (fields.slug) fields.slug = String(fields.slug).trim().toLowerCase();
+//     const ok = await TopicModel.reorderTopic(id, newOrder);
+//     if (!ok) return res.status(404).json({ message: "Topic not found" });
 
-//     const affected = await Topic.updateTopicById(id, fields);
-//     if (!affected) return res.status(404).json({ message: "Topic not found" });
-//     return res.json({ message: "Topic updated", id });
+//     return res.json({ message: "Topic reordered", id, order_no: newOrder });
 //   } catch (err) {
-//     console.error("editTopic error:", err);
-//     if (err && err.code === "ER_DUP_ENTRY") return res.status(409).json({ message: "Slug conflict under same parent" });
-//     return res.status(500).json({ message: "Server error while updating topic" });
-//   }
-// };
-
-// // Delete topic (DELETE /api/topics/:id)
-// export const deleteTopic = async (req, res) => {
-//   try {
-//     const id = Number(req.params.id);
-//     if (!id) return res.status(400).json({ message: "Invalid topic id" });
-
-//     const affected = await Topic.deleteTopicById(id);
-//     if (!affected) return res.status(404).json({ message: "Topic not found" });
-
-//     return res.json({ message: "Topic and all its children/content deleted" });
-//   } catch (err) {
-//     console.error("deleteTopic error:", err);
-//     return res.status(500).json({ message: "Server error while deleting topic" });
-//   }
-// };
-
-
-
-
-// /**
-//  * Resolve a root-level URL path like `/python/python_variables_names` to a topic + blocks.
-//  * This function expects the path to be in req.params[0] (regex route) or req.path.
-//  */
-// export const resolveByRootPath = async (req, res, next) => {
-//   try {
-//     // read wildcard from req.params[0] (regex route) or other fallbacks
-//     let wildcard = "";
-//     if (req.params && typeof req.params[0] === "string") {
-//       wildcard = req.params[0];
-//     } else if (req.path && req.path.startsWith("/")) {
-//       wildcard = req.path.slice(1);
-//     } else {
-//       return next(); // nothing to resolve
-//     }
-
-//     // normalize: remove trailing slash, split, lowercase
-//     const segments = String(wildcard)
-//       .replace(/\/+$/, "")          // remove trailing slashes
-//       .split("/")
-//       .filter(Boolean)
-//       .map(s => String(s).trim().toLowerCase());
-
-//     if (segments.length === 0) return next();
-
-//     // Use existing model function to walk the slug segments
-//     const topic = await Topic.getTopicBySlugPath(segments);
-//     if (!topic) {
-//       return res.status(404).json({ message: "Not found" }); // frontend expects 404
-//     }
-
-//     const blocks = await ContentBlock.getBlocksByTopic(topic.id);
-
-//     // return JSON (you can also render server-side HTML here if desired)
-//     return res.json({ topic, blocks });
-
-//   } catch (err) {
-//     console.error("resolveByRootPath error:", err);
+//     console.error("reorderTopic error:", err);
 //     return res.status(500).json({ message: "Server error" });
 //   }
 // };
 
 
 
-// // // src/controllers/topicController.js
-// // import * as Topic from "../models/topicModel.js";
-// // import * as ContentBlock from "../models/contentBlockModel.js";
+/**
+ * POST /api/topics/:parentId/reorder
+ * Body: [{ id: <topicId>, order_index: <desiredIndex> }, ...]
+ */
+// export const bulkReorderHandler = async (req, res) => {
+//   try {
+//     const rawParent = req.params.parentId;
+//     const parentId = (rawParent === "null" || rawParent === "NULL") ? null : Number(rawParent);
+//     if (parentId !== null && (!Number.isFinite(parentId) || parentId <= 0)) {
+//       return res.status(400).json({ message: "Invalid parentId" });
+//     }
 
-// // /**
-// //  * Create a new topic (subject / subtopic)
-// //  */
-// // export const createTopic = async (req, res) => {
-// //   try {
-// //     const { parent_id = null, title, slug, description = null, order_index = 0, is_published = 0 } = req.body;
+//     const items = req.body;
+//     if (!Array.isArray(items)) return res.status(400).json({ message: "Request body must be an array" });
+//     if (items.length === 0) return res.status(400).json({ message: "Array must contain at least one item" });
 
-// //     if (!title || !slug) {
-// //       return res.status(400).json({ message: "title and slug are required" });
-// //     }
+//     for (const it of items) {
+//   if (!("id" in it) || !("order_no" in it)) {
+//     return res.status(400).json({ message: "Each item must contain id and order_no" });
+//   }
+//   if (!Number.isFinite(Number(it.id)) || !Number.isFinite(Number(it.order_no))) {
+//     return res.status(400).json({ message: "id and order_no must be numbers" });
+//   }
+// }
 
-// //     const normalizedSlug = String(slug).trim().toLowerCase();
-
-// //     const payload = {
-// //       parent_id,
-// //       title,
-// //       slug: normalizedSlug,
-// //       description,
-// //       author_id: req.user?.id || null,
-// //       order_index,
-// //       is_published,
-// //     };
-
-// //     const id = await Topic.createTopic(payload);
-// //     return res.status(201).json({ id, title, slug: normalizedSlug });
-// //   } catch (err) {
-// //     console.error("createTopic error:", err);
-// //     if (err && err.code === "ER_DUP_ENTRY") {
-// //       return res.status(409).json({ message: "Slug already exists under this parent. Choose a different slug." });
-// //     }
-// //     return res.status(500).json({ message: "Server error while creating topic" });
-// //   }
-// // };
-
-// // /**
-// //  * Get children topics for given parent id.
-// //  */
-// // export const getChildren = async (req, res) => {
-// //   try {
-// //     const raw = req.params.id;
-// //     const parentId = raw === "null" ? null : Number(raw);
-// //     const children = await Topic.getChildren(parentId);
-// //     return res.json(children);
-// //   } catch (err) {
-// //     console.error("getChildren error:", err);
-// //     return res.status(500).json({ message: "Server error while fetching children" });
-// //   }
-// // };
-
-// // /**
-// //  * Resolve a topic from a slug path (wildcard)
-// //  * Works with regex route (/^\/slug\/(.*)$/) or with named param routes
-// //  */
-// // // export const getTopicBySlugPath = async (req, res) => {
-// // //   try {
-// // //     // Support multiple ways of receiving the wildcard:
-// // //     // 1) If router used named param: req.params.slugPath
-// // //     // 2) If router used regex: req.params[0]
-// // //     // 3) Fallback to req.path (strip prefix)
-// // //     let wildcard = "";
-
-// // //     if (req.params && typeof req.params.slugPath === "string") {
-// // //       wildcard = req.params.slugPath;
-// // //     } else if (req.params && typeof req.params[0] === "string") {
-// // //       wildcard = req.params[0];
-// // //     } else if (req.path && req.path.startsWith("/slug/")) {
-// // //       wildcard = req.path.replace(/^\/slug\//, "");
-// // //     } else if (req.url && req.url.startsWith("/slug/")) {
-// // //       wildcard = req.url.replace(/^\/slug\//, "");
-// // //     }
-
-// // //     const segments = String(wildcard)
-// // //       .split("/")
-// // //       .filter(Boolean)
-// // //       .map((s) => String(s).trim().toLowerCase());
-
-// // //     if (segments.length === 0) {
-// // //       return res.status(400).json({ message: "No slug provided in path" });
-// // //     }
-
-// // //     const topic = await Topic.getTopicBySlugPath(segments);
-// // //     if (!topic) return res.status(404).json({ message: "Topic not found" });
-
-// // //     const blocks = await ContentBlock.getBlocksByTopic(topic.id);
-// // //     return res.json({ topic, blocks });
-// // //   } catch (err) {
-// // //     console.error("getTopicBySlugPath error:", err);
-// // //     return res.status(500).json({ message: "Server error" });
-// // //   }
-// // // };
+//     // call model
+//     const result = await TopicModel.bulkReorderChildren(parentId, items);
+//     return res.json({ message: "Reorder applied", result });
+//   } catch (err) {
+//     console.error("bulkReorderHandler error:", err && err.message ? err.message : err);
+//     if (err.message && err.message.startsWith("Topic id")) {
+//       return res.status(400).json({ message: err.message });
+//     }
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 
-// // // src/controllers/topicController.js
-// // // export const getTopicBySlugPath = (req, res) => {
-// // //   const slugPath = req.params.slugPath; // "tech/programming/javascript"
-// // //   const segments = slugPath.split("/");
 
-// // //   res.json({ slugPath, segments });
-// // // };
+export const bulkReorderHandler = async (req, res) => {
+  try {
+    const rawParent = req.params.parentId;
+    const parentId = (rawParent === "null" || rawParent === "NULL") ? null : Number(rawParent);
+    if (parentId !== null && (!Number.isFinite(parentId) || parentId <= 0)) {
+      return res.status(400).json({ message: "Invalid parentId" });
+    }
 
+    const items = req.body;
+    if (!Array.isArray(items)) return res.status(400).json({ message: "Request body must be an array" });
+    if (items.length === 0) return res.status(400).json({ message: "Array must contain at least one item" });
 
-// // export const getTopicBySlugPath = (req, res) => {
-// //   const slugPath = req.params.slugPath;   // "a/b/c"
-// //   const segments = slugPath ? slugPath.split("/") : [];
-// //   res.json({ slugPath, segments });
-// // };
-
-
-// // export const editTopic = async (req, res) => {
-// //   try {
-// //     const id = Number(req.params.id);
-// //     if (!id) return res.status(400).json({ message: "Invalid topic id" });
-
-// //     const allowed = ["title","slug","description","parent_id","order_index","is_published"];
-// //     const fields = {};
-// //     for (const k of allowed) {
-// //       if (Object.prototype.hasOwnProperty.call(req.body, k)) fields[k] = req.body[k];
-// //     }
-// //     if (Object.keys(fields).length === 0) return res.status(400).json({ message: "No updatable fields provided" });
-
-// //     // normalize slug if present
-// //     if (fields.slug) fields.slug = String(fields.slug).trim().toLowerCase();
-
-// //     const affected = await Topic.updateTopicById(id, fields);
-// //     if (!affected) return res.status(404).json({ message: "Topic not found" });
-// //     return res.json({ message: "Topic updated", id });
-// //   } catch (err) {
-// //     console.error("editTopic error:", err);
-// //     if (err && err.code === "ER_DUP_ENTRY") return res.status(409).json({ message: "Slug conflict under same parent" });
-// //     return res.status(500).json({ message: "Server error while updating topic" });
-// //   }
-// // };
-
-// // // Delete topic (DELETE /api/topics/:id)
-// // export const deleteTopic = async (req, res) => {
-// //   try {
-// //     const id = Number(req.params.id);
-// //     if (!id) return res.status(400).json({ message: "Invalid topic id" });
-
-// //     const affected = await Topic.deleteTopicById(id);
-// //     if (!affected) return res.status(404).json({ message: "Topic not found" });
-
-// //     return res.json({ message: "Topic and all its children/content deleted" });
-// //   } catch (err) {
-// //     console.error("deleteTopic error:", err);
-// //     return res.status(500).json({ message: "Server error while deleting topic" });
-// //   }
-// // };
+    // validate each item has id and order_no
+    for (const it of items) {
+      if (!("id" in it) || !("order_no" in it)) {
+        return res.status(400).json({ message: "Each item must contain id and order_no" });
+      }
+      if (!Number.isFinite(Number(it.id)) || !Number.isFinite(Number(it.order_no))) {
+        return res.status(400).json({ message: "id and order_no must be numbers" });
+      }
+    }
 
 
-// // // // src/controllers/topicController.js
-// // // import * as Topic from "../models/topicModel.js";
-// // // import * as ContentBlock from "../models/contentBlockModel.js";
-
-// // // /**
-// // //  * Create a new topic (subject / subtopic)
-// // //  * Protected: should be used with authenticate + requireAdmin / requireAuthor middleware
-// // //  *
-// // //  * Body expected:
-// // //  * {
-// // //  *   parent_id: null | int,
-// // //  *   title: "Python",
-// // //  *   slug: "python",
-// // //  *   description: "...",
-// // //  *   order_index: 0,
-// // //  *   is_published: 0 | 1
-// // //  * }
-// // //  */
-// // // export const createTopic = async (req, res) => {
-// // //   try {
-// // //     const { parent_id = null, title, slug, description = null, order_index = 0, is_published = 0 } = req.body;
-
-// // //     if (!title || !slug) {
-// // //       return res.status(400).json({ message: "title and slug are required" });
-// // //     }
-
-// // //     // optional: normalize slug (lowercase, trim)
-// // //     const normalizedSlug = String(slug).trim().toLowerCase();
-
-// // //     const payload = {
-// // //       parent_id,
-// // //       title,
-// // //       slug: normalizedSlug,
-// // //       description,
-// // //       author_id: req.user?.id || null,
-// // //       order_index,
-// // //       is_published,
-// // //     };
-
-// // //     const id = await Topic.createTopic(payload);
-// // //     return res.status(201).json({ id, title, slug: normalizedSlug });
-// // //   } catch (err) {
-// // //     console.error("createTopic error:", err);
-// // //     // handle duplicate (unique_parent_slug) case
-// // //     if (err && err.code === "ER_DUP_ENTRY") {
-// // //       return res.status(409).json({ message: "Slug already exists under this parent. Choose a different slug." });
-// // //     }
-// // //     return res.status(500).json({ message: "Server error while creating topic" });
-// // //   }
-// // // };
-
-// // // /**
-// // //  * Get children topics for given parent id.
-// // //  * If parent id is "null" string, it will fetch top-level topics (parent_id IS NULL).
-// // //  * Public endpoint.
-// // //  */
-// // // export const getChildren = async (req, res) => {
-// // //   try {
-// // //     const raw = req.params.id;
-// // //     const parentId = raw === "null" ? null : Number(raw);
-// // //     const children = await Topic.getChildren(parentId);
-// // //     return res.json(children);
-// // //   } catch (err) {
-// // //     console.error("getChildren error:", err);
-// // //     return res.status(500).json({ message: "Server error while fetching children" });
-// // //   }
-// // // };
-
-// // // /**
-// // //  * Resolve a topic from a slug path (wildcard)
-// // //  * Example: /api/topics/slug/python/dict/advanced
-// // //  * returns { topic, blocks }
-// // //  */
-// // // export const getTopicBySlugPath = async (req, res) => {
-// // //   try {
-// // //     // route: /api/topics/slug/:slugPath(*)
-// // //     const wildcard = req.params.slugPath || ""; // e.g. "python/dict/advanced"
-// // //     const segments = wildcard.split("/").filter(Boolean).map(s => String(s).trim().toLowerCase());
-// // //     const topic = await Topic.getTopicBySlugPath(segments);
-// // //     if (!topic) return res.status(404).json({ message: "Topic not found" });
-
-// // //     const blocks = await ContentBlock.getBlocksByTopic(topic.id);
-// // //     return res.json({ topic, blocks });
-// // //   } catch (err) {
-// // //     console.error("getTopicBySlugPath error:", err);
-// // //     return res.status(500).json({ message: "Server error" });
-// // //   }
-// // // };
 
 
-// // // // // src/controllers/topicController.js
-// // // // import * as Topic from "../models/topicModel.js";
-// // // // import * as ContentBlock from "../models/contentBlockModel.js";
-
-// // // // export const getTopicBySlugPath = async (req, res) => {
-// // // //   try {
-// // // //     // route: /api/topics/slug/:slugPath(*)
-// // // //     const wildcard = req.params.slugPath || ""; // e.g. "python/dict/advanced"
-// // // //     const segments = wildcard.split("/").filter(Boolean);
-// // // //     const topic = await Topic.getTopicBySlugPath(segments);
-// // // //     if (!topic) return res.status(404).json({ message: "Topic not found" });
-
-// // // //     const blocks = await ContentBlock.getBlocksByTopic(topic.id);
-// // // //     return res.json({ topic, blocks });
-// // // //   } catch (err) {
-// // // //     console.error(err);
-// // // //     res.status(500).json({ message: "Server error" });
-// // // //   }
-// // // // };
+    // call model
+    const result = await TopicModel.bulkReorderChildren(parentId, items);
+    return res.json({ message: "Reorder applied", result });
+  } catch (err) {
+    console.error("bulkReorderHandler error:", err && err.message ? err.message : err);
+    if (err.message && err.message.startsWith("Topic id")) {
+      return res.status(400).json({ message: err.message });
+    }
+    return res.status(500).json({ message: "Server error" });
+  }
+};

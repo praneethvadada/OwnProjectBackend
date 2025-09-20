@@ -50,6 +50,7 @@ router.post("/:id/content", authenticate, requireAdmin, TopicContentCtrl.addCont
 // Add content by slug wildcard (protected) — use regex to capture arbitrary path after /slug/
 router.post(/^\/slug\/(.*)\/content$/, authenticate, requireAdmin, TopicContentCtrl.addContentBySlug);
 
+router.post("/:parentId/reorder", authenticate, requireAdmin, TopicCtrl.bulkReorderHandler);
 
 export default router;
 
