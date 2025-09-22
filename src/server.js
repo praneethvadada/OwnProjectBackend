@@ -3,7 +3,6 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
-
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -13,7 +12,7 @@ import mcqRoutes from "./routes/mcqRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import contentBlockRoutes from "./routes/contentBlockRoutes.js";
 import * as TopicCtrl from "./controllers/topicController.js";
-  
+import uploadRoutes from "./routes/uploadRoutes.js"; 
 dotenv.config();
 
 const app = express();
@@ -22,6 +21,8 @@ const app = express();
 const JSON_LIMIT = process.env.JSON_LIMIT || "50mb"; // use env var if you want to change easily
 app.use(express.json({ limit: JSON_LIMIT }));
 app.use(express.urlencoded({ limit: JSON_LIMIT, extended: true }));
+
+
 
 // --- CORS (keep after body parser or before; order for CORS doesn't matter much) ---
 app.use(
