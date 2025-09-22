@@ -34,6 +34,7 @@ app.use(
 
 // Serve uploads if you use them later
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/api/upload", uploadRoutes);
 
 // Reserved root handling & root slug route
 const RESERVED_ROOTS = new Set(["api","auth","static","assets","admin","health","_env","public"]);

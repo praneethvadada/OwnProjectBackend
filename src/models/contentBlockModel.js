@@ -39,35 +39,54 @@ function safeParse(val) {
  * stableStringify - deterministic stringifier for objects/arrays used when computing content hashes.
  * Guarantees same output for objects with same keys regardless of insertion order.
  */
+// function stableStringify(obj) {
+//   if (obj === null || typeof obj === "undefined") return "";
+//   if (typeof obj === "string") return obj.trim();
+//   if (typeof obj === "number" || typeof obj === "boolean") return String(obj);
+
+//   if (Array.isArray(obj)) {
+//     // map each element through stableStringify
+//     return `[${obj.map((el) => stableStringify(el)).join(",")}]`;
+//   }
+
+//   if (typeof obj === "object") {
+//     const keys = Object.keys(obj).sort();
+//     const parts = keys.map((k) => `${k}:${stableStringify(obj[k])}`);
+//     return `{${parts.join(",")}}`;
+//   }
+
+//   // fallback
+//   return String(obj);
+// }
+
+// /**
+//  * computeContentHashFromComponents
+//  * - components: array or value (we normalize to array)
+//  * - returns hex SHA-256
+//  */
+// function computeContentHashFromComponents(components) {
+//   const normalized = stableStringify(components || []);
+//   return crypto.createHash("sha256").update(normalized).digest("hex");
+// }
+
+
+
+
 function stableStringify(obj) {
-  if (obj === null || typeof obj === "undefined") return "";
+  if (obj === null || obj === undefined) return "";
   if (typeof obj === "string") return obj.trim();
-  if (typeof obj === "number" || typeof obj === "boolean") return String(obj);
-
-  if (Array.isArray(obj)) {
-    // map each element through stableStringify
-    return `[${obj.map((el) => stableStringify(el)).join(",")}]`;
-  }
-
   if (typeof obj === "object") {
+    if (Array.isArray(obj)) return `[${obj.map(stableStringify).join(",")}]`;
     const keys = Object.keys(obj).sort();
-    const parts = keys.map((k) => `${k}:${stableStringify(obj[k])}`);
-    return `{${parts.join(",")}}`;
+    return `{${keys.map(k => `${k}:${stableStringify(obj[k])}`).join(",")}}`;
   }
-
-  // fallback
   return String(obj);
 }
-
-/**
- * computeContentHashFromComponents
- * - components: array or value (we normalize to array)
- * - returns hex SHA-256
- */
 function computeContentHashFromComponents(components) {
-  const normalized = stableStringify(components || []);
-  return crypto.createHash("sha256").update(normalized).digest("hex");
+  return crypto.createHash("sha256").update(stableStringify(components || [])).digest("hex");
 }
+
+
 
 /**
  * createBlock(payload)
@@ -154,6 +173,139 @@ export const getBlocksByTopic = async (topic_id) => {
     updated_at: r.updated_at
   }));
 };
+
+
+export const getBlockById = async (id) => {
+  const [rows] = await db.query(
+    `SELECT id, topic_id, block_type, components, block_order, metadata, created_at, updated_at
+     FROM content_blocks WHERE id = ? LIMIT 1`,
+    [id]
+  );
+  if (!rows || rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    topic_id: r.topic_id,
+    block_type: r.block_type,
+    components: r.components ? JSON.parse(r.components) : null,
+    block_order: r.block_order,
+    metadata: r.metadata ? JSON.parse(r.metadata) : null,
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+};
+
+// --- update block by id ---
+export const updateBlockById = async (id, payload) => {
+  // allowed updatable columns: block_type, components, block_order, metadata, title (if you keep title column), etc.
+  // We will accept a flexible payload and map/serialize JSON fields.
+  const allowed = ["block_type", "block_order", "metadata", "components", "title"];
+  const setParts = [];
+  const vals = [];
+
+  if (!payload || typeof payload !== "object") throw new Error("Invalid payload");
+
+  if (Object.prototype.hasOwnProperty.call(payload, "components")) {
+    vals.push(JSON.stringify(payload.components));
+    setParts.push("components = ?");
+    // recompute content_hash if components change
+    const hash = computeContentHashFromComponents(payload.components);
+    vals.push(hash);
+    setParts.push("content_hash = ?");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "block_type")) {
+    vals.push(payload.block_type);
+    setParts.push("block_type = ?");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "block_order")) {
+    vals.push(Number.isFinite(Number(payload.block_order)) ? Number(payload.block_order) : 0);
+    setParts.push("block_order = ?");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "metadata")) {
+    vals.push(JSON.stringify(payload.metadata));
+    setParts.push("metadata = ?");
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "title")) {
+    vals.push(payload.title);
+    setParts.push("title = ?");
+  }
+
+  if (setParts.length === 0) return 0; // nothing to update
+
+  vals.push(id); // where id = ?
+
+  const sql = `UPDATE content_blocks SET ${setParts.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+  const [res] = await db.query(sql, vals);
+  return res.affectedRows;
+};
+
+// --- delete block by id ---
+export const deleteBlockById = async (id) => {
+  const [res] = await db.query("DELETE FROM content_blocks WHERE id = ?", [id]);
+  return res.affectedRows;
+};
+
+
+// export const updateBlockById = async (id, payload) => {
+//   // allowed updatable columns: block_type, components, block_order, metadata, title (if you keep title column), etc.
+//   // We will accept a flexible payload and map/serialize JSON fields.
+//   const allowed = ["block_type", "block_order", "metadata", "components", "title"];
+//   const setParts = [];
+//   const vals = [];
+
+//   if (!payload || typeof payload !== "object") throw new Error("Invalid payload");
+
+//   if (Object.prototype.hasOwnProperty.call(payload, "components")) {
+//     vals.push(JSON.stringify(payload.components));
+//     setParts.push("components = ?");
+//     // recompute content_hash if components change
+//     const hash = computeContentHashFromComponents(payload.components);
+//     vals.push(hash);
+//     setParts.push("content_hash = ?");
+//   }
+
+//   if (Object.prototype.hasOwnProperty.call(payload, "block_type")) {
+//     vals.push(payload.block_type);
+//     setParts.push("block_type = ?");
+//   }
+
+//   if (Object.prototype.hasOwnProperty.call(payload, "block_order")) {
+//     vals.push(Number.isFinite(Number(payload.block_order)) ? Number(payload.block_order) : 0);
+//     setParts.push("block_order = ?");
+//   }
+
+//   if (Object.prototype.hasOwnProperty.call(payload, "metadata")) {
+//     vals.push(JSON.stringify(payload.metadata));
+//     setParts.push("metadata = ?");
+//   }
+
+//   if (Object.prototype.hasOwnProperty.call(payload, "title")) {
+//     vals.push(payload.title);
+//     setParts.push("title = ?");
+//   }
+
+//   if (setParts.length === 0) return 0; // nothing to update
+
+//   vals.push(id); // where id = ?
+
+//   const sql = `UPDATE content_blocks SET ${setParts.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+//   const [res] = await db.query(sql, vals);
+//   return res.affectedRows;
+// };
+
+// // --- delete block by id ---
+// export const deleteBlockById = async (id) => {
+//   const [res] = await db.query("DELETE FROM content_blocks WHERE id = ?", [id]);
+//   return res.affectedRows;
+// };
+
+
+
+
 
 // // src/models/contentBlockModel.js
 // import db from "../config/db.js";
